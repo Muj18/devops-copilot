@@ -76,6 +76,13 @@ if "code_result" not in st.session_state:
     st.session_state["code_result"] = ""
 if "request_count" not in st.session_state:
     st.session_state["request_count"] = 0
+if "selected_tool" not in st.session_state:
+    st.session_state["selected_tool"] = tool
+
+# ✅ If tool changed, update the prompt
+if tool != st.session_state["selected_tool"]:
+    st.session_state["user_prompt"] = default_prompts.get(tool, "")
+    st.session_state["selected_tool"] = tool
 
 # ✅ Reset button
 if st.sidebar.button("🔄 Reset"):

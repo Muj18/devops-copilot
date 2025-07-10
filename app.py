@@ -62,10 +62,15 @@ if st.sidebar.button("🔄 Reset"):
 
 # ✅ Session-based request limit
 MAX_REQUESTS = 5
+remaining = MAX_REQUESTS - st.session_state["request_count"]
+
 if st.session_state["request_count"] >= MAX_REQUESTS:
-    st.error("⚠️ Daily limit reached. Please come back tomorrow.")
+    st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
     st.stop()
-st.sidebar.markdown(f"⚙️ **Generations used:** {st.session_state['request_count']} / {MAX_REQUESTS}")
+
+# ✅ Sidebar usage display
+st.sidebar.markdown(f"⚙️ **Free runs left:** {remaining} / {MAX_REQUESTS}")
+st.sidebar.caption("Limit resets on browser refresh or reset button.")
 
 # ✅ Tool selection
 tool = st.selectbox("Select a DevOps tool:", [

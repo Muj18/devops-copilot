@@ -1,5 +1,4 @@
 import os
-import io
 import streamlit as st
 from openai import OpenAI
 
@@ -38,18 +37,6 @@ default_prompts = {
 # User input
 user_prompt = st.text_area("Describe what you want:", value=default_prompts.get(tool, ""), height=150)
 
-# File extension mapping
-file_extensions = {
-    "Terraform": "tf",
-    "Docker": "Dockerfile",
-    "CI/CD (GitHub Actions)": "yml",
-    "Kubernetes": "yml",
-    "Monitoring (Prometheus)": "yml",
-    "IAM Policies": "json",
-    "Helm Charts": "yml",
-    "Other": "txt"
-}
-
 # Code generation
 if st.button("🚀 Generate Code"):
     if not user_prompt.strip():
@@ -73,19 +60,8 @@ if st.button("🚀 Generate Code"):
                     max_tokens=2000,
                 )
                 code = response.choices[0].message.content
+                st.markdown("### 🧾 Generated Code")
                 st.code(code)
-
-                # Download setup
-                ext = file_extensions.get(tool, "txt")
-                filename = ext if ext == "Dockerfile" else f"generated.{ext}"
-                buffer = io.BytesIO(code.encode("utf-8"))
-
-                st.download_button(
-                    label="💾 Download Code",
-                    data=buffer,
-                    file_name=filename,
-                    mime="text/plain"
-                )
 
             except Exception as e:
                 st.error(f"❌ Error generating code: {e}")

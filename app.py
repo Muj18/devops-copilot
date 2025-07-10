@@ -6,7 +6,7 @@ from openai import OpenAI
 # ✅ Embed Plausible Analytics
 # Replace "yourapp.onrender.com" with your actual deployed URL
 components.html("""
-<script defer data-domain="devopscopilot.onrender.com" src="https://plausible.io/js/script.js"></script>
+<script defer data-domain="https://devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
 """, height=0)
 
 # Load OpenAI key securely from environment

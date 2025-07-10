@@ -37,8 +37,13 @@ client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 # ✅ Streamlit page config
 st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
-st.title("🧠 DevOps Copilot")
-st.markdown("Build production-grade DevOps code in seconds using AI.")
+
+# ✅ Header & Intro
+st.markdown("# 🧠 DevOps Copilot")
+st.markdown("""
+### Generate production-grade DevOps code with AI  
+No boilerplate. No guesswork. Just structured HCL, YAML, and CI/CD pipelines — ready to deploy.
+""")
 
 # ✅ State setup
 if "user_prompt" not in st.session_state:
@@ -69,27 +74,27 @@ default_prompts = {
     "Other": ""
 }
 
-# ✅ Visitor count
+# ✅ Sidebar
 visitor_count = get_visitor_count()
+st.sidebar.markdown("## 📊 Session Stats")
 if visitor_count is not None:
     st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
+MAX_REQUESTS = 5
+remaining = MAX_REQUESTS - st.session_state["request_count"]
+st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
+st.sidebar.caption("Limit resets on browser refresh or using reset button.")
 
-# ✅ Tool dropdown (locked if generating)
+# ✅ Reset button
+if st.sidebar.button("♻️ Reset Session"):
+    st.session_state["user_prompt"] = default_prompts.get(st.session_state["selected_tool"], "")
+    st.session_state["code_result"] = ""
+    st.session_state["request_count"] = 0
+    st.rerun()
+
+# ✅ Tool dropdown
 tool = st.selectbox(
-    "Select a DevOps tool or platform:",
-    [
-        "Terraform",
-        "Docker",
-        "CI/CD (GitHub Actions)",
-        "Kubernetes",
-        "Monitoring (Prometheus)",
-        "IAM Policies",
-        "Helm Charts",
-        "AWS",
-        "GCP",
-        "Azure",
-        "Other"
-    ],
+    "🔧 Select a DevOps tool or platform:",
+    list(default_prompts.keys()),
     index=list(default_prompts.keys()).index(st.session_state["selected_tool"]),
     disabled=st.session_state["is_generating"]
 )
@@ -99,38 +104,41 @@ if tool != st.session_state["selected_tool"]:
     st.session_state["user_prompt"] = default_prompts.get(tool, "")
     st.session_state["selected_tool"] = tool
 
-# ✅ Reset button
-if st.sidebar.button("🔄 Reset"):
-    st.session_state["user_prompt"] = default_prompts.get(tool, "")
-    st.session_state["code_result"] = ""
-    st.session_state["request_count"] = 0
-    st.rerun()
+# ✅ Expandable Example Prompts
+with st.expander("📌 Example Prompt"):
+    st.markdown(f"**{tool}:** `{default_prompts.get(tool, '')}`")
 
-# ✅ Limit check
-MAX_REQUESTS = 5
-remaining = MAX_REQUESTS - st.session_state["request_count"]
+# ✅ Stop if over limit
 if remaining <= 0:
     st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
     st.stop()
 
-# ✅ Sidebar info
-st.sidebar.markdown(f"⚙️ **Free runs left:** {remaining} / {MAX_REQUESTS}")
-st.sidebar.caption("Limit resets on browser refresh or reset button.")
+# ✅ Layout in columns
+col1, col2 = st.columns([1, 1])
 
-# ✅ Prompt input
-user_prompt = st.text_area(
-    "Describe what you want:",
-    value=st.session_state["user_prompt"],
-    height=150
-)
+with col1:
+    user_prompt = st.text_area(
+        "📝 Describe what you want:",
+        value=st.session_state["user_prompt"],
+        height=200
+    )
+    if st.button("🚀 Generate Code"):
+        st.session_state["is_generating"] = True
+        st.session_state["should_generate"] = True
+        st.rerun()
 
-# ✅ Generate button
-if st.button("🚀 Generate Code"):
-    st.session_state["is_generating"] = True
-    st.session_state["should_generate"] = True
-    st.rerun()
+with col2:
+    if st.session_state["code_result"]:
+        st.markdown("### 🧾 Generated Code")
+        st.code(st.session_state["code_result"])
+        st.download_button(
+            label="💾 Download Code",
+            data=st.session_state["code_result"],
+            file_name="devops_code.txt",
+            mime="text/plain"
+        )
 
-# ✅ Do the actual generation
+# ✅ Run generation
 if st.session_state["should_generate"]:
     st.session_state["should_generate"] = False
 
@@ -142,9 +150,10 @@ if st.session_state["should_generate"]:
     </script>
     """, height=0)
 
-    with st.spinner("Generating code using AI..."):
+    with st.spinner("🤖 Generating code using AI..."):
         try:
             timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            st.sidebar.markdown("---")
             st.sidebar.markdown(f"🕒 **Last Used**: {timestamp}")
             st.sidebar.markdown(f"🔧 **Tool**: {tool}")
             st.sidebar.markdown(f"📝 **Prompt**: {user_prompt[:60]}...")
@@ -174,19 +183,10 @@ if st.session_state["should_generate"]:
             st.error(f"❌ Error generating code: {e}")
         finally:
             st.session_state["is_generating"] = False
-            st.rerun()  # ✅ Force refresh so dropdown becomes active again
-
-# ✅ Show code and download
-if st.session_state["code_result"]:
-    st.markdown("### 🧾 Generated Code")
-    st.code(st.session_state["code_result"])
-    st.download_button(
-        label="💾 Download Code",
-        data=st.session_state["code_result"],
-        file_name="devops_code.txt",
-        mime="text/plain"
-    )
+            st.rerun()
 
 # ✅ Footer
 st.markdown("---")
-st.markdown("Made by DevOps Copilot | v0.2")
+st.markdown("""
+Made by [DevOps Copilot](https://devops-copilot.onrender.com) | v0.2  
+""")

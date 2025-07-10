@@ -1,6 +1,13 @@
 import os
 import streamlit as st
+import streamlit.components.v1 as components
 from openai import OpenAI
+
+# ✅ Embed Plausible Analytics
+# Replace "yourapp.onrender.com" with your actual deployed URL
+components.html("""
+<script defer data-domain="yourapp.onrender.com" src="https://plausible.io/js/script.js"></script>
+""", height=0)
 
 # Load OpenAI key securely from environment
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])

@@ -104,9 +104,13 @@ if tool != st.session_state["selected_tool"]:
     st.session_state["user_prompt"] = default_prompts.get(tool, "")
     st.session_state["selected_tool"] = tool
 
-# ✅ Expandable Example Prompts
+# ✅ Show example with click-to-use
+example = default_prompts.get(tool, "")
 with st.expander("📌 Example Prompt"):
-    st.markdown(f"**{tool}:** `{default_prompts.get(tool, '')}`")
+    st.code(example)
+    if st.button("Use this example prompt"):
+        st.session_state["user_prompt"] = example
+        st.rerun()
 
 # ✅ Stop if over limit
 if remaining <= 0:

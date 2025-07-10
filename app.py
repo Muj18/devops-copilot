@@ -3,13 +3,14 @@ import streamlit as st
 import streamlit.components.v1 as components
 import httpx
 from openai import OpenAI
+from datetime import datetime
 
-# ✅ Plausible Analytics tracking script
+# ✅ Plausible tracking script
 components.html("""
 <script defer data-domain="devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
 """, height=0)
 
-# ✅ Function to fetch today's visitor count from Plausible
+# ✅ Fetch visitor count from Plausible
 def get_visitor_count():
     try:
         headers = {
@@ -31,20 +32,32 @@ def get_visitor_count():
         print(f"Visitor count error: {e}")
     return None
 
-# ✅ Show visitor count in sidebar
-visitor_count = get_visitor_count()
-if visitor_count is not None:
-    st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
-
-# 🔑 Load OpenAI key securely
+# ✅ OpenAI setup
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# 📄 Page setup
+# ✅ Page setup
 st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
 st.title("🧠 DevOps Copilot")
 st.markdown("Build production-grade DevOps code in seconds using AI.")
 
-# 🧰 Tool selection
+# ✅ Sidebar visitor count
+visitor_count = get_visitor_count()
+if visitor_count is not None:
+    st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
+
+# ✅ Session state for prompt and result
+if "user_prompt" not in st.session_state:
+    st.session_state["user_prompt"] = ""
+if "code_result" not in st.session_state:
+    st.session_state["code_result"] = ""
+
+# ✅ Reset button
+if st.sidebar.button("🔄 Reset"):
+    st.session_state["user_prompt"] = ""
+    st.session_state["code_result"] = ""
+    st.experimental_rerun()
+
+# ✅ Tool selection
 tool = st.selectbox("Select a DevOps tool:", [
     "Terraform",
     "Docker",
@@ -56,7 +69,7 @@ tool = st.selectbox("Select a DevOps tool:", [
     "Other"
 ])
 
-# 💬 Suggested prompts
+# ✅ Suggested prompts
 default_prompts = {
     "Terraform": "Generate Terraform to create an EKS cluster with 2 node groups and S3 backend.",
     "Docker": "Create a Dockerfile for a Python Flask app with gunicorn.",
@@ -68,12 +81,12 @@ default_prompts = {
     "Other": ""
 }
 
-# 📝 Prompt input
-user_prompt = st.text_area("Describe what you want:", value=default_prompts.get(tool, ""), height=150)
+# ✅ Prompt input
+user_prompt = st.text_area("Describe what you want:", value=st.session_state["user_prompt"], height=150)
 
-# 🚀 Generate button with Plausible custom event
+# ✅ Generate code button
 if st.button("🚀 Generate Code"):
-    # 🔘 Track click event
+    # Track with Plausible
     components.html("""
     <script>
       if (window.plausible) {
@@ -87,6 +100,16 @@ if st.button("🚀 Generate Code"):
     else:
         with st.spinner("Generating code using GPT..."):
             try:
+                # Log usage
+                timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                st.sidebar.markdown(f"🕒 **Last Used**: {timestamp}")
+                st.sidebar.markdown(f"🔧 **Tool**: {tool}")
+                st.sidebar.markdown(f"📝 **Prompt**: {user_prompt[:60]}...")
+
+                print("🧠 Prompt submitted:")
+                print(f"[{timestamp}] Tool: {tool}")
+                print(f"Prompt: {user_prompt}")
+
                 response = client.chat.completions.create(
                     model="gpt-4",
                     messages=[
@@ -103,12 +126,18 @@ if st.button("🚀 Generate Code"):
                     max_tokens=2000,
                 )
                 code = response.choices[0].message.content
-                st.markdown("### 🧾 Generated Code")
-                st.code(code)
+                st.session_state["code_result"] = code
+                st.session_state["user_prompt"] = user_prompt
 
             except Exception as e:
                 st.error(f"❌ Error generating code: {e}")
+                print(f"Error: {e}")
 
-# 🧾 Footer
+# ✅ Display generated code
+if st.session_state["code_result"]:
+    st.markdown("### 🧾 Generated Code")
+    st.code(st.session_state["code_result"])
+
+# ✅ Footer
 st.markdown("---")
 st.markdown("Made by DevOps Copilot | v0.2")

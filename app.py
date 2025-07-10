@@ -1,23 +1,50 @@
 import os
 import streamlit as st
 import streamlit.components.v1 as components
+import httpx
 from openai import OpenAI
 
-# ✅ Embed Plausible Analytics
-# Replace "yourapp.onrender.com" with your actual deployed URL
+# ✅ Plausible Analytics tracking script
 components.html("""
 <script defer data-domain="devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
 """, height=0)
 
-# Load OpenAI key securely from environment
+# ✅ Function to fetch today's visitor count from Plausible
+def get_visitor_count():
+    try:
+        headers = {
+            "Authorization": f"Bearer " + os.environ["PLAUSIBLE_API_KEY"]
+        }
+        params = {
+            "site_id": "devops-copilot.onrender.com",
+            "period": "day"
+        }
+        response = httpx.get(
+            "https://plausible.io/api/v1/stats/visitors",
+            headers=headers,
+            params=params,
+            timeout=5
+        )
+        if response.status_code == 200:
+            return response.json().get("value", 0)
+    except Exception as e:
+        print(f"Visitor count error: {e}")
+    return None
+
+# ✅ Show visitor count in sidebar
+visitor_count = get_visitor_count()
+if visitor_count is not None:
+    st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
+
+# 🔑 Load OpenAI key securely
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# Streamlit page setup
+# 📄 Page setup
 st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
 st.title("🧠 DevOps Copilot")
 st.markdown("Build production-grade DevOps code in seconds using AI.")
 
-# Tool selection
+# 🧰 Tool selection
 tool = st.selectbox("Select a DevOps tool:", [
     "Terraform",
     "Docker",
@@ -29,7 +56,7 @@ tool = st.selectbox("Select a DevOps tool:", [
     "Other"
 ])
 
-# Suggested prompts per tool
+# 💬 Suggested prompts
 default_prompts = {
     "Terraform": "Generate Terraform to create an EKS cluster with 2 node groups and S3 backend.",
     "Docker": "Create a Dockerfile for a Python Flask app with gunicorn.",
@@ -41,11 +68,20 @@ default_prompts = {
     "Other": ""
 }
 
-# User input
+# 📝 Prompt input
 user_prompt = st.text_area("Describe what you want:", value=default_prompts.get(tool, ""), height=150)
 
-# Code generation
+# 🚀 Generate button with Plausible custom event
 if st.button("🚀 Generate Code"):
+    # 🔘 Track click event
+    components.html("""
+    <script>
+      if (window.plausible) {
+        plausible('generate-code-clicked');
+      }
+    </script>
+    """, height=0)
+
     if not user_prompt.strip():
         st.warning("Please enter a prompt.")
     else:
@@ -73,6 +109,6 @@ if st.button("🚀 Generate Code"):
             except Exception as e:
                 st.error(f"❌ Error generating code: {e}")
 
-# Footer
+# 🧾 Footer
 st.markdown("---")
 st.markdown("Made by DevOps Copilot | v0.2")

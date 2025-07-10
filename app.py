@@ -45,8 +45,8 @@ visitor_count = get_visitor_count()
 if visitor_count is not None:
     st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
 
-# ✅ Tool selection
-tool = st.selectbox("Select a DevOps tool:", [
+# ✅ Tool selection (now includes cloud providers)
+tool = st.selectbox("Select a DevOps tool or platform:", [
     "Terraform",
     "Docker",
     "CI/CD (GitHub Actions)",
@@ -54,7 +54,10 @@ tool = st.selectbox("Select a DevOps tool:", [
     "Monitoring (Prometheus)",
     "IAM Policies",
     "Helm Charts",
-    "Other"
+    "Other",
+    "AWS",
+    "GCP",
+    "Azure"
 ])
 
 # ✅ Prompt suggestions
@@ -66,6 +69,9 @@ default_prompts = {
     "Monitoring (Prometheus)": "Write Prometheus alert rules for high CPU and memory usage.",
     "IAM Policies": "Create an IAM policy allowing S3 read/write for a Lambda function.",
     "Helm Charts": "Create a Helm chart for a basic Go web app.",
+    "AWS": "Generate AWS CLI commands to launch an EC2 instance and create an S3 bucket.",
+    "GCP": "Write a GCP Deployment Manager config to deploy a Cloud Function with Pub/Sub trigger.",
+    "Azure": "Write Azure CLI commands to provision an AKS cluster with autoscaling.",
     "Other": ""
 }
 

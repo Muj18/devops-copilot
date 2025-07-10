@@ -174,6 +174,7 @@ if st.session_state["should_generate"]:
             st.error(f"❌ Error generating code: {e}")
         finally:
             st.session_state["is_generating"] = False
+            st.rerun()  # ✅ Force refresh so dropdown becomes active again
 
 # ✅ Show code and download
 if st.session_state["code_result"]:

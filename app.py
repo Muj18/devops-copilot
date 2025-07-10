@@ -10,6 +10,7 @@ components.html("""
 <script defer data-domain="devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
 """, height=0)
 
+# ✅ Get today's visitor count
 def get_visitor_count():
     try:
         headers = {"Authorization": f"Bearer {os.environ['PLAUSIBLE_API_KEY']}"}
@@ -21,23 +22,20 @@ def get_visitor_count():
         print(f"Visitor count error: {e}")
     return None
 
+# ✅ OpenAI client
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
+# ✅ Streamlit config
 st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
 
+# ✅ Header
 st.markdown("# 🧠 DevOps Copilot")
 st.markdown("""
 ### Generate production-grade DevOps code with AI  
 No boilerplate. No guesswork. Just structured HCL, YAML, and CI/CD pipelines — ready to deploy.
 """)
 
-# State setup
-for key in ["user_prompt", "code_result", "request_count", "selected_tool", "is_generating", "should_generate"]:
-    if key not in st.session_state:
-        st.session_state[key] = "" if "prompt" in key or "code" in key else 0 if "count" in key else False
-st.session_state["selected_tool"] = st.session_state.get("selected_tool", "Terraform")
-
-# Prompt suggestions
+# ✅ Default prompts
 default_prompts = {
     "Terraform": "Generate Terraform to create an EKS cluster with 2 node groups and S3 backend.",
     "Docker": "Create a Dockerfile for a Python Flask app with gunicorn.",
@@ -52,7 +50,21 @@ default_prompts = {
     "Other": ""
 }
 
-# Sidebar
+# ✅ Session state defaults
+if "user_prompt" not in st.session_state:
+    st.session_state["user_prompt"] = ""
+if "code_result" not in st.session_state:
+    st.session_state["code_result"] = ""
+if "request_count" not in st.session_state:
+    st.session_state["request_count"] = 0
+if "is_generating" not in st.session_state:
+    st.session_state["is_generating"] = False
+if "should_generate" not in st.session_state:
+    st.session_state["should_generate"] = False
+if "selected_tool" not in st.session_state or st.session_state["selected_tool"] not in default_prompts:
+    st.session_state["selected_tool"] = "Terraform"
+
+# ✅ Sidebar
 visitor_count = get_visitor_count()
 st.sidebar.markdown("## 📊 Session Stats")
 if visitor_count is not None:
@@ -63,12 +75,12 @@ st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
 st.sidebar.caption("Limit resets on browser refresh or using reset button.")
 
 if st.sidebar.button("♻️ Reset Session"):
-    st.session_state["user_prompt"] = default_prompts.get(st.session_state["selected_tool"], "")
+    st.session_state["user_prompt"] = default_prompts[st.session_state["selected_tool"]]
     st.session_state["code_result"] = ""
     st.session_state["request_count"] = 0
     st.rerun()
 
-# Tool selection
+# ✅ Tool dropdown
 tool = st.selectbox(
     "🔧 Select a DevOps tool or platform:",
     list(default_prompts.keys()),
@@ -76,11 +88,12 @@ tool = st.selectbox(
     disabled=st.session_state["is_generating"]
 )
 
+# ✅ Update on tool change
 if tool != st.session_state["selected_tool"]:
-    st.session_state["user_prompt"] = default_prompts.get(tool, "")
     st.session_state["selected_tool"] = tool
+    st.session_state["user_prompt"] = default_prompts[tool]
 
-# Example prompt
+# ✅ Example prompt
 example = default_prompts.get(tool, "")
 with st.expander("📌 Example Prompt"):
     st.code(example)
@@ -88,12 +101,12 @@ with st.expander("📌 Example Prompt"):
         st.session_state["user_prompt"] = example
         st.rerun()
 
-# Limit check
+# ✅ Limit check
 if remaining <= 0:
     st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
     st.stop()
 
-# Prompt input
+# ✅ Prompt input
 user_prompt = st.text_area(
     "📝 Describe what you want:",
     value=st.session_state["user_prompt"],
@@ -105,7 +118,7 @@ if st.button("🚀 Generate Code"):
     st.session_state["should_generate"] = True
     st.rerun()
 
-# Code generation
+# ✅ Generate code
 if st.session_state["should_generate"]:
     st.session_state["should_generate"] = False
 
@@ -152,7 +165,7 @@ if st.session_state["should_generate"]:
             st.session_state["is_generating"] = False
             st.rerun()
 
-# Full-width code output
+# ✅ Full-width output
 if st.session_state["code_result"]:
     st.markdown("### 🧾 Generated Code")
     st.code(st.session_state["code_result"])
@@ -163,8 +176,9 @@ if st.session_state["code_result"]:
         mime="text/plain"
     )
 
-# Footer
+# ✅ Footer
 st.markdown("---")
 st.markdown("""
 Made by [DevOps Copilot](https://devops-copilot.onrender.com) | v0.2  
+Built with ❤️ using OpenAI + Streamlit
 """)

@@ -5,12 +5,12 @@ import httpx
 from openai import OpenAI
 from datetime import datetime
 
-# ✅ Plausible tracking script
+# ✅ Embed Plausible Analytics
 components.html("""
 <script defer data-domain="devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
 """, height=0)
 
-# ✅ Fetch visitor count from Plausible
+# ✅ Get today's visitor count
 def get_visitor_count():
     try:
         headers = {
@@ -32,30 +32,40 @@ def get_visitor_count():
         print(f"Visitor count error: {e}")
     return None
 
-# ✅ OpenAI setup
+# ✅ Setup OpenAI client
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# ✅ Page setup
+# ✅ Streamlit page config
 st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
 st.title("🧠 DevOps Copilot")
 st.markdown("Build production-grade DevOps code in seconds using AI.")
 
-# ✅ Sidebar visitor count
+# ✅ Sidebar: Visitor count
 visitor_count = get_visitor_count()
 if visitor_count is not None:
     st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
 
-# ✅ Session state for prompt and result
+# ✅ Initialize session state
 if "user_prompt" not in st.session_state:
     st.session_state["user_prompt"] = ""
 if "code_result" not in st.session_state:
     st.session_state["code_result"] = ""
+if "request_count" not in st.session_state:
+    st.session_state["request_count"] = 0
 
 # ✅ Reset button
 if st.sidebar.button("🔄 Reset"):
     st.session_state["user_prompt"] = ""
     st.session_state["code_result"] = ""
+    st.session_state["request_count"] = 0
     st.experimental_rerun()
+
+# ✅ Session-based request limit
+MAX_REQUESTS = 5
+if st.session_state["request_count"] >= MAX_REQUESTS:
+    st.error("⚠️ Daily limit reached. Please come back tomorrow.")
+    st.stop()
+st.sidebar.markdown(f"⚙️ **Generations used:** {st.session_state['request_count']} / {MAX_REQUESTS}")
 
 # ✅ Tool selection
 tool = st.selectbox("Select a DevOps tool:", [
@@ -69,7 +79,7 @@ tool = st.selectbox("Select a DevOps tool:", [
     "Other"
 ])
 
-# ✅ Suggested prompts
+# ✅ Prompt suggestions
 default_prompts = {
     "Terraform": "Generate Terraform to create an EKS cluster with 2 node groups and S3 backend.",
     "Docker": "Create a Dockerfile for a Python Flask app with gunicorn.",
@@ -84,9 +94,9 @@ default_prompts = {
 # ✅ Prompt input
 user_prompt = st.text_area("Describe what you want:", value=st.session_state["user_prompt"], height=150)
 
-# ✅ Generate code button
+# ✅ Generate button with tracking
 if st.button("🚀 Generate Code"):
-    # Track with Plausible
+    # Track custom event in Plausible
     components.html("""
     <script>
       if (window.plausible) {
@@ -128,12 +138,13 @@ if st.button("🚀 Generate Code"):
                 code = response.choices[0].message.content
                 st.session_state["code_result"] = code
                 st.session_state["user_prompt"] = user_prompt
+                st.session_state["request_count"] += 1
 
             except Exception as e:
                 st.error(f"❌ Error generating code: {e}")
                 print(f"Error: {e}")
 
-# ✅ Display generated code
+# ✅ Show generated code
 if st.session_state["code_result"]:
     st.markdown("### 🧾 Generated Code")
     st.code(st.session_state["code_result"])

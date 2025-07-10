@@ -84,14 +84,13 @@ remaining = MAX_REQUESTS - st.session_state["request_count"]
 st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
 st.sidebar.caption("Limit resets on browser refresh or using reset button.")
 
-# ✅ Reset button
 if st.sidebar.button("♻️ Reset Session"):
     st.session_state["user_prompt"] = default_prompts.get(st.session_state["selected_tool"], "")
     st.session_state["code_result"] = ""
     st.session_state["request_count"] = 0
     st.rerun()
 
-# ✅ Tool dropdown
+# ✅ Tool selector
 tool = st.selectbox(
     "🔧 Select a DevOps tool or platform:",
     list(default_prompts.keys()),
@@ -99,7 +98,6 @@ tool = st.selectbox(
     disabled=st.session_state["is_generating"]
 )
 
-# ✅ Update prompt if tool changes
 if tool != st.session_state["selected_tool"]:
     st.session_state["user_prompt"] = default_prompts.get(tool, "")
     st.session_state["selected_tool"] = tool
@@ -117,8 +115,8 @@ if remaining <= 0:
     st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
     st.stop()
 
-# ✅ Layout in columns
-col1, col2 = st.columns([1, 1])
+# ✅ Layout with wider output column
+col1, col2 = st.columns([1, 2])
 
 with col1:
     user_prompt = st.text_area(

@@ -54,10 +54,10 @@ tool = st.selectbox("Select a DevOps tool or platform:", [
     "Monitoring (Prometheus)",
     "IAM Policies",
     "Helm Charts",
-    "Other",
     "AWS",
     "GCP",
-    "Azure"
+    "Azure",
+    "Other"  
 ])
 
 # ✅ Prompt suggestions

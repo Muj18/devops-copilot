@@ -1,82 +1,95 @@
 import os
+import io
 import streamlit as st
 from openai import OpenAI
 
-# Set Streamlit page config
-st.set_page_config(
-    page_title="DevOps Copilot",
-    page_icon="🧠",
-)
+# Load OpenAI key securely from environment
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# Initialize OpenAI client
-if "OPENAI_API_KEY" not in os.environ:
-    st.warning("⚠️ OpenAI API key is not set. Please add it as an environment variable.")
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
-
-# Track generated code across reruns
-if "generated_code" not in st.session_state:
-    st.session_state.generated_code = ""
-
-# App Title and Intro
+# Streamlit page setup
+st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
 st.title("🧠 DevOps Copilot")
-st.markdown("Build production-ready infrastructure code in seconds.")
+st.markdown("Build production-grade DevOps code in seconds using AI.")
 
-st.markdown("""
-### 🚀 How It Works:
-1. Select a template  
-2. Click **Generate Code**  
-3. Copy the output or download (if enabled)  
-""")
+# Tool selection
+tool = st.selectbox("Select a DevOps tool:", [
+    "Terraform",
+    "Docker",
+    "CI/CD (GitHub Actions)",
+    "Kubernetes",
+    "Monitoring (Prometheus)",
+    "IAM Policies",
+    "Helm Charts",
+    "Other"
+])
 
-# Step 1 – Choose a template
-with st.form("template_form"):
-    template = st.selectbox(
-        "Choose your infrastructure template:",
-        ["EKS + RDS", "Static S3 Website", "Lambda + API Gateway"]
-    )
-    submitted = st.form_submit_button("🚧 Generate Code")
+# Suggested prompts per tool
+default_prompts = {
+    "Terraform": "Generate Terraform to create an EKS cluster with 2 node groups and S3 backend.",
+    "Docker": "Create a Dockerfile for a Python Flask app with gunicorn.",
+    "CI/CD (GitHub Actions)": "Generate a GitHub Actions workflow to deploy a Node.js app to AWS EC2.",
+    "Kubernetes": "Generate Kubernetes Deployment and Service YAML for a Django app.",
+    "Monitoring (Prometheus)": "Write Prometheus alert rules for high CPU and memory usage.",
+    "IAM Policies": "Create an IAM policy allowing S3 read/write for a Lambda function.",
+    "Helm Charts": "Create a Helm chart for a basic Go web app.",
+    "Other": ""
+}
 
-# Step 2 – Generate code on submit
-if submitted:
-    st.info("⏳ Generating Terraform code with AI...")
+# User input
+user_prompt = st.text_area("Describe what you want:", value=default_prompts.get(tool, ""), height=150)
 
-    prompt = f"""
-    Generate Terraform code for the following infrastructure:
-    - {template}
-    Keep it production-ready but easy to understand for a DevOps beginner.
-    """
+# File extension mapping
+file_extensions = {
+    "Terraform": "tf",
+    "Docker": "Dockerfile",
+    "CI/CD (GitHub Actions)": "yml",
+    "Kubernetes": "yml",
+    "Monitoring (Prometheus)": "yml",
+    "IAM Policies": "json",
+    "Helm Charts": "yml",
+    "Other": "txt"
+}
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a DevOps assistant that writes clean, production-ready Terraform code using best practices."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.3,
-        )
-        st.session_state.generated_code = response.choices[0].message.content
-        st.success("✅ Code generated successfully!")
+# Code generation
+if st.button("🚀 Generate Code"):
+    if not user_prompt.strip():
+        st.warning("Please enter a prompt.")
+    else:
+        with st.spinner("Generating code using GPT..."):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a DevOps assistant. Return production-ready code only. No markdown or explanations. Use correct formats: HCL, YAML, Dockerfile, etc.",
+                        },
+                        {
+                            "role": "user",
+                            "content": user_prompt,
+                        },
+                    ],
+                    temperature=0.2,
+                    max_tokens=2000,
+                )
+                code = response.choices[0].message.content
+                st.code(code)
 
-    except Exception as e:
-        st.error(f"❌ Error generating code: {str(e)}")
+                # Download setup
+                ext = file_extensions.get(tool, "txt")
+                filename = ext if ext == "Dockerfile" else f"generated.{ext}"
+                buffer = io.BytesIO(code.encode("utf-8"))
 
-# Step 3 – Display generated code
-if st.session_state.generated_code:
-    st.markdown("### 🧾 Generated Terraform Code")
-    st.code(st.session_state.generated_code, language='hcl')
+                st.download_button(
+                    label="💾 Download Code",
+                    data=buffer,
+                    file_name=filename,
+                    mime="text/plain"
+                )
 
-    with st.expander("📦 Download Project Files"):
-        st.warning("🔒 Download restricted in public demo. Sign up to unlock full download.")
-        st.button("Download ZIP (Pro Only)", disabled=True)
+            except Exception as e:
+                st.error(f"❌ Error generating code: {e}")
 
-# Feedback Footer
+# Footer
 st.markdown("---")
-st.markdown("Made by DevOps Copilot | v0.1")
-st.text_area("💬 Have feedback? Let us know:")
+st.markdown("Made with ❤️ by DevOps Copilot | v0.2")

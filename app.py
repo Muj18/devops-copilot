@@ -68,4 +68,4 @@ if st.button("🚀 Generate Code"):
 
 # Footer
 st.markdown("---")
-st.markdown("Made with ❤️ by DevOps Copilot | v0.2")
+st.markdown("Made by DevOps Copilot | v0.2")

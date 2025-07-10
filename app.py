@@ -45,20 +45,17 @@ visitor_count = get_visitor_count()
 if visitor_count is not None:
     st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
 
-# ✅ Tool selection (now includes cloud providers)
-tool = st.selectbox("Select a DevOps tool or platform:", [
-    "Terraform",
-    "Docker",
-    "CI/CD (GitHub Actions)",
-    "Kubernetes",
-    "Monitoring (Prometheus)",
-    "IAM Policies",
-    "Helm Charts",
-    "AWS",
-    "GCP",
-    "Azure",
-    "Other"  
-])
+# ✅ Track state
+if "user_prompt" not in st.session_state:
+    st.session_state["user_prompt"] = ""
+if "code_result" not in st.session_state:
+    st.session_state["code_result"] = ""
+if "request_count" not in st.session_state:
+    st.session_state["request_count"] = 0
+if "selected_tool" not in st.session_state:
+    st.session_state["selected_tool"] = "Terraform"
+if "is_generating" not in st.session_state:
+    st.session_state["is_generating"] = False
 
 # ✅ Prompt suggestions
 default_prompts = {
@@ -75,17 +72,27 @@ default_prompts = {
     "Other": ""
 }
 
-# ✅ Initialize session state
-if "user_prompt" not in st.session_state:
-    st.session_state["user_prompt"] = default_prompts.get(tool, "")
-if "code_result" not in st.session_state:
-    st.session_state["code_result"] = ""
-if "request_count" not in st.session_state:
-    st.session_state["request_count"] = 0
-if "selected_tool" not in st.session_state:
-    st.session_state["selected_tool"] = tool
+# ✅ Tool dropdown — disables during code generation
+tool = st.selectbox(
+    "Select a DevOps tool or platform:",
+    [
+        "Terraform",
+        "Docker",
+        "CI/CD (GitHub Actions)",
+        "Kubernetes",
+        "Monitoring (Prometheus)",
+        "IAM Policies",
+        "Helm Charts",
+        "AWS",
+        "GCP",
+        "Azure",
+        "Other"
+    ],
+    index=list(default_prompts.keys()).index(st.session_state["selected_tool"]),
+    disabled=st.session_state["is_generating"]
+)
 
-# ✅ If tool changed, update the prompt
+# ✅ Update prompt when tool changes
 if tool != st.session_state["selected_tool"]:
     st.session_state["user_prompt"] = default_prompts.get(tool, "")
     st.session_state["selected_tool"] = tool
@@ -97,15 +104,14 @@ if st.sidebar.button("🔄 Reset"):
     st.session_state["request_count"] = 0
     st.rerun()
 
-# ✅ Session-based request limit
+# ✅ Request limit
 MAX_REQUESTS = 5
 remaining = MAX_REQUESTS - st.session_state["request_count"]
-
-if st.session_state["request_count"] >= MAX_REQUESTS:
+if remaining <= 0:
     st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
     st.stop()
 
-# ✅ Sidebar usage display
+# ✅ Sidebar info
 st.sidebar.markdown(f"⚙️ **Free runs left:** {remaining} / {MAX_REQUESTS}")
 st.sidebar.caption("Limit resets on browser refresh or reset button.")
 
@@ -116,9 +122,8 @@ user_prompt = st.text_area(
     height=150
 )
 
-# ✅ Generate button with tracking
+# ✅ Generate button
 if st.button("🚀 Generate Code"):
-    # Track custom event in Plausible
     components.html("""
     <script>
       if (window.plausible) {
@@ -130,17 +135,13 @@ if st.button("🚀 Generate Code"):
     if not user_prompt.strip():
         st.warning("Please enter a prompt.")
     else:
-        with st.spinner("Generating code using GPT..."):
+        st.session_state["is_generating"] = True
+        with st.spinner("Generating code using AI..."):
             try:
-                # Log usage
                 timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
                 st.sidebar.markdown(f"🕒 **Last Used**: {timestamp}")
                 st.sidebar.markdown(f"🔧 **Tool**: {tool}")
                 st.sidebar.markdown(f"📝 **Prompt**: {user_prompt[:60]}...")
-
-                print("🧠 Prompt submitted:")
-                print(f"[{timestamp}] Tool: {tool}")
-                print(f"Prompt: {user_prompt}")
 
                 response = client.chat.completions.create(
                     model="gpt-4",
@@ -157,6 +158,7 @@ if st.button("🚀 Generate Code"):
                     temperature=0.2,
                     max_tokens=2000,
                 )
+
                 code = response.choices[0].message.content
                 st.session_state["code_result"] = code
                 st.session_state["user_prompt"] = user_prompt
@@ -164,9 +166,10 @@ if st.button("🚀 Generate Code"):
 
             except Exception as e:
                 st.error(f"❌ Error generating code: {e}")
-                print(f"Error: {e}")
+            finally:
+                st.session_state["is_generating"] = False
 
-# ✅ Show generated code + download
+# ✅ Show generated result + download
 if st.session_state["code_result"]:
     st.markdown("### 🧾 Generated Code")
     st.code(st.session_state["code_result"])

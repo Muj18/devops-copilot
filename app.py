@@ -45,33 +45,6 @@ visitor_count = get_visitor_count()
 if visitor_count is not None:
     st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
 
-# ✅ Initialize session state
-if "user_prompt" not in st.session_state:
-    st.session_state["user_prompt"] = ""
-if "code_result" not in st.session_state:
-    st.session_state["code_result"] = ""
-if "request_count" not in st.session_state:
-    st.session_state["request_count"] = 0
-
-# ✅ Reset button
-if st.sidebar.button("🔄 Reset"):
-    st.session_state["user_prompt"] = ""
-    st.session_state["code_result"] = ""
-    st.session_state["request_count"] = 0
-    st.experimental_rerun()
-
-# ✅ Session-based request limit
-MAX_REQUESTS = 5
-remaining = MAX_REQUESTS - st.session_state["request_count"]
-
-if st.session_state["request_count"] >= MAX_REQUESTS:
-    st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
-    st.stop()
-
-# ✅ Sidebar usage display
-st.sidebar.markdown(f"⚙️ **Free runs left:** {remaining} / {MAX_REQUESTS}")
-st.sidebar.caption("Limit resets on browser refresh or reset button.")
-
 # ✅ Tool selection
 tool = st.selectbox("Select a DevOps tool:", [
     "Terraform",
@@ -96,8 +69,39 @@ default_prompts = {
     "Other": ""
 }
 
+# ✅ Initialize session state
+if "user_prompt" not in st.session_state:
+    st.session_state["user_prompt"] = default_prompts.get(tool, "")
+if "code_result" not in st.session_state:
+    st.session_state["code_result"] = ""
+if "request_count" not in st.session_state:
+    st.session_state["request_count"] = 0
+
+# ✅ Reset button
+if st.sidebar.button("🔄 Reset"):
+    st.session_state["user_prompt"] = default_prompts.get(tool, "")
+    st.session_state["code_result"] = ""
+    st.session_state["request_count"] = 0
+    st.rerun()
+
+# ✅ Session-based request limit
+MAX_REQUESTS = 5
+remaining = MAX_REQUESTS - st.session_state["request_count"]
+
+if st.session_state["request_count"] >= MAX_REQUESTS:
+    st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
+    st.stop()
+
+# ✅ Sidebar usage display
+st.sidebar.markdown(f"⚙️ **Free runs left:** {remaining} / {MAX_REQUESTS}")
+st.sidebar.caption("Limit resets on browser refresh or reset button.")
+
 # ✅ Prompt input
-user_prompt = st.text_area("Describe what you want:", value=st.session_state["user_prompt"], height=150)
+user_prompt = st.text_area(
+    "Describe what you want:",
+    value=st.session_state["user_prompt"],
+    height=150
+)
 
 # ✅ Generate button with tracking
 if st.button("🚀 Generate Code"):

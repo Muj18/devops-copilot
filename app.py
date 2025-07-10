@@ -149,10 +149,16 @@ if st.button("🚀 Generate Code"):
                 st.error(f"❌ Error generating code: {e}")
                 print(f"Error: {e}")
 
-# ✅ Show generated code
+# ✅ Show generated code + download
 if st.session_state["code_result"]:
     st.markdown("### 🧾 Generated Code")
     st.code(st.session_state["code_result"])
+    st.download_button(
+        label="💾 Download Code",
+        data=st.session_state["code_result"],
+        file_name="devops_code.txt",
+        mime="text/plain"
+    )
 
 # ✅ Footer
 st.markdown("---")

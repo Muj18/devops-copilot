@@ -40,12 +40,7 @@ st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
 st.title("🧠 DevOps Copilot")
 st.markdown("Build production-grade DevOps code in seconds using AI.")
 
-# ✅ Sidebar: Visitor count
-visitor_count = get_visitor_count()
-if visitor_count is not None:
-    st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
-
-# ✅ Track state
+# ✅ State setup
 if "user_prompt" not in st.session_state:
     st.session_state["user_prompt"] = ""
 if "code_result" not in st.session_state:
@@ -56,6 +51,8 @@ if "selected_tool" not in st.session_state:
     st.session_state["selected_tool"] = "Terraform"
 if "is_generating" not in st.session_state:
     st.session_state["is_generating"] = False
+if "should_generate" not in st.session_state:
+    st.session_state["should_generate"] = False
 
 # ✅ Prompt suggestions
 default_prompts = {
@@ -72,7 +69,12 @@ default_prompts = {
     "Other": ""
 }
 
-# ✅ Tool dropdown — disables during code generation
+# ✅ Visitor count
+visitor_count = get_visitor_count()
+if visitor_count is not None:
+    st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
+
+# ✅ Tool dropdown (locked if generating)
 tool = st.selectbox(
     "Select a DevOps tool or platform:",
     [
@@ -92,7 +94,7 @@ tool = st.selectbox(
     disabled=st.session_state["is_generating"]
 )
 
-# ✅ Update prompt when tool changes
+# ✅ Update prompt if tool changes
 if tool != st.session_state["selected_tool"]:
     st.session_state["user_prompt"] = default_prompts.get(tool, "")
     st.session_state["selected_tool"] = tool
@@ -104,7 +106,7 @@ if st.sidebar.button("🔄 Reset"):
     st.session_state["request_count"] = 0
     st.rerun()
 
-# ✅ Request limit
+# ✅ Limit check
 MAX_REQUESTS = 5
 remaining = MAX_REQUESTS - st.session_state["request_count"]
 if remaining <= 0:
@@ -124,6 +126,14 @@ user_prompt = st.text_area(
 
 # ✅ Generate button
 if st.button("🚀 Generate Code"):
+    st.session_state["is_generating"] = True
+    st.session_state["should_generate"] = True
+    st.rerun()
+
+# ✅ Do the actual generation
+if st.session_state["should_generate"]:
+    st.session_state["should_generate"] = False
+
     components.html("""
     <script>
       if (window.plausible) {
@@ -132,44 +142,40 @@ if st.button("🚀 Generate Code"):
     </script>
     """, height=0)
 
-    if not user_prompt.strip():
-        st.warning("Please enter a prompt.")
-    else:
-        st.session_state["is_generating"] = True
-        with st.spinner("Generating code using AI..."):
-            try:
-                timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-                st.sidebar.markdown(f"🕒 **Last Used**: {timestamp}")
-                st.sidebar.markdown(f"🔧 **Tool**: {tool}")
-                st.sidebar.markdown(f"📝 **Prompt**: {user_prompt[:60]}...")
+    with st.spinner("Generating code using AI..."):
+        try:
+            timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            st.sidebar.markdown(f"🕒 **Last Used**: {timestamp}")
+            st.sidebar.markdown(f"🔧 **Tool**: {tool}")
+            st.sidebar.markdown(f"📝 **Prompt**: {user_prompt[:60]}...")
 
-                response = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a DevOps assistant. Return production-ready code only. No markdown or explanations. Use correct formats: HCL, YAML, Dockerfile, etc.",
-                        },
-                        {
-                            "role": "user",
-                            "content": user_prompt,
-                        },
-                    ],
-                    temperature=0.2,
-                    max_tokens=2000,
-                )
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a DevOps assistant. Return production-ready code only. No markdown or explanations. Use correct formats: HCL, YAML, Dockerfile, etc.",
+                    },
+                    {
+                        "role": "user",
+                        "content": user_prompt,
+                    },
+                ],
+                temperature=0.2,
+                max_tokens=2000,
+            )
 
-                code = response.choices[0].message.content
-                st.session_state["code_result"] = code
-                st.session_state["user_prompt"] = user_prompt
-                st.session_state["request_count"] += 1
+            code = response.choices[0].message.content
+            st.session_state["code_result"] = code
+            st.session_state["user_prompt"] = user_prompt
+            st.session_state["request_count"] += 1
 
-            except Exception as e:
-                st.error(f"❌ Error generating code: {e}")
-            finally:
-                st.session_state["is_generating"] = False
+        except Exception as e:
+            st.error(f"❌ Error generating code: {e}")
+        finally:
+            st.session_state["is_generating"] = False
 
-# ✅ Show generated result + download
+# ✅ Show code and download
 if st.session_state["code_result"]:
     st.markdown("### 🧾 Generated Code")
     st.code(st.session_state["code_result"])

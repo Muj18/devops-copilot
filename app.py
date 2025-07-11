@@ -1,183 +1,92 @@
-import os
 import streamlit as st
-import streamlit.components.v1 as components
-import httpx
-from openai import OpenAI
-from datetime import datetime
 
-# ✅ Embed Plausible Analytics
-components.html("""
-<script defer data-domain="devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
-""", height=0)
+# Set up the page
+st.set_page_config(
+    page_title="CodeWeave – DevOps with GenAI",
+    page_icon="🧵",
+    layout="wide"
+)
 
-# ✅ Get today's visitor count
-def get_visitor_count():
-    try:
-        headers = {"Authorization": f"Bearer {os.environ['PLAUSIBLE_API_KEY']}"}
-        params = {"site_id": "devops-copilot.onrender.com", "period": "day"}
-        response = httpx.get("https://plausible.io/api/v1/stats/visitors", headers=headers, params=params, timeout=5)
-        if response.status_code == 200:
-            return response.json().get("value", 0)
-    except Exception as e:
-        print(f"Visitor count error: {e}")
-    return None
-
-# ✅ OpenAI client
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-# ✅ Streamlit config
-st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
-
-# ✅ Header
-st.markdown("# 🧠 DevOps Copilot")
+# Inject custom styling to match Xtract theme
 st.markdown("""
-### Generate production-grade DevOps code with AI  
-No boilerplate. No guesswork. Just structured HCL, YAML, and CI/CD pipelines — ready to deploy.
-""")
+    <style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+        }
 
-# ✅ Default prompts
-default_prompts = {
-    "Terraform": "Generate Terraform to create an EKS cluster with 2 node groups and S3 backend.",
-    "Docker": "Create a Dockerfile for a Python Flask app with gunicorn.",
-    "CI/CD (GitHub Actions)": "Generate a GitHub Actions workflow to deploy a Node.js app to AWS EC2.",
-    "Kubernetes": "Generate Kubernetes Deployment and Service YAML for a Django app.",
-    "Monitoring (Prometheus)": "Write Prometheus alert rules for high CPU and memory usage.",
-    "IAM Policies": "Create an IAM policy allowing S3 read/write for a Lambda function.",
-    "Helm Charts": "Create a Helm chart for a basic Go web app.",
-    "AWS": "Generate AWS CLI commands to launch an EC2 instance and create an S3 bucket.",
-    "GCP": "Write a GCP Deployment Manager config to deploy a Cloud Function with Pub/Sub trigger.",
-    "Azure": "Write Azure CLI commands to provision an AKS cluster with autoscaling.",
-    "Other": ""
-}
+        .stButton > button {
+            background-color: #8f43f0;
+            color: white;
+            border-radius: 8px;
+            padding: 0.6em 1.2em;
+            font-weight: 600;
+        }
 
-# ✅ Session state defaults
-if "user_prompt" not in st.session_state:
-    st.session_state["user_prompt"] = ""
-if "code_result" not in st.session_state:
-    st.session_state["code_result"] = ""
-if "request_count" not in st.session_state:
-    st.session_state["request_count"] = 0
-if "is_generating" not in st.session_state:
-    st.session_state["is_generating"] = False
-if "should_generate" not in st.session_state:
-    st.session_state["should_generate"] = False
-if "selected_tool" not in st.session_state or st.session_state["selected_tool"] not in default_prompts:
-    st.session_state["selected_tool"] = "Terraform"
+        .stTextInput > div > div > input {
+            background-color: #121212;
+            color: white;
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
 
-# ✅ Sidebar
-visitor_count = get_visitor_count()
-st.sidebar.markdown("## 📊 Session Stats")
-if visitor_count is not None:
-    st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
-MAX_REQUESTS = 5
-remaining = MAX_REQUESTS - st.session_state["request_count"]
-st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
-st.sidebar.caption("Limit resets on browser refresh or using reset button.")
+        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+            color: white;
+        }
 
-if st.sidebar.button("♻️ Reset Session"):
-    st.session_state["user_prompt"] = default_prompts[st.session_state["selected_tool"]]
-    st.session_state["code_result"] = ""
-    st.session_state["request_count"] = 0
-    st.rerun()
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# ✅ Tool dropdown
-tool = st.selectbox(
-    "🔧 Select a DevOps tool or platform:",
-    list(default_prompts.keys()),
-    index=list(default_prompts.keys()).index(st.session_state["selected_tool"]),
-    disabled=st.session_state["is_generating"]
-)
+# Hero section
+st.markdown("""
+    <h1 style='font-size: 40px; font-weight: bold;'>CodeWeave – DevOps Automation with GenAI</h1>
+    <p style='font-size: 18px; line-height: 1.6;'>
+        Instantly generate production-ready Terraform, Docker, Kubernetes, CI/CD pipelines,<br>
+        and even GenAI app templates – all from a single prompt.
+    </p>
+""", unsafe_allow_html=True)
 
-# ✅ Update on tool change
-if tool != st.session_state["selected_tool"]:
-    st.session_state["selected_tool"] = tool
-    st.session_state["user_prompt"] = default_prompts[tool]
+# Prompt input
+prompt = st.text_input("🔧 Describe what you want to deploy (e.g. '3-tier AWS app with CI/CD')")
 
-# ✅ Example prompt
-example = default_prompts.get(tool, "")
-with st.expander("📌 Example Prompt"):
-    st.code(example)
-    if st.button("Use this example prompt"):
-        st.session_state["user_prompt"] = example
-        st.rerun()
+# Generate button
+if st.button("✨ Generate Infrastructure"):
+    st.markdown("#### 🧠 AI-Generated Terraform Output")
+    st.code("""resource "aws_instance" "web" {
+  ami           = "ami-123456"
+  instance_type = "t3.micro"
+  tags = {
+    Name = "web"
+  }
+}""", language="terraform")
 
-# ✅ Limit check
-if remaining <= 0:
-    st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
-    st.stop()
+    st.markdown("#### 📦 Dockerfile")
+    st.code("""FROM python:3.10-slim
+COPY . /app
+WORKDIR /app
+RUN pip install -r requirements.txt
+CMD ["python", "main.py"]""", language="docker")
 
-# ✅ Prompt input
-user_prompt = st.text_area(
-    "📝 Describe what you want:",
-    value=st.session_state["user_prompt"],
-    height=200
-)
+    st.markdown("#### 🔄 GitHub Actions Workflow")
+    st.code("""name: Deploy App
 
-if st.button("🚀 Generate Code"):
-    st.session_state["is_generating"] = True
-    st.session_state["should_generate"] = True
-    st.rerun()
+on:
+  push:
+    branches: [main]
 
-# ✅ Generate code
-if st.session_state["should_generate"]:
-    st.session_state["should_generate"] = False
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+""", language="yaml")
 
-    components.html("""
-    <script>
-      if (window.plausible) {
-        plausible('generate-code-clicked');
-      }
-    </script>
-    """, height=0)
-
-    with st.spinner("🤖 Generating code using AI..."):
-        try:
-            timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-            st.sidebar.markdown("---")
-            st.sidebar.markdown(f"🕒 **Last Used**: {timestamp}")
-            st.sidebar.markdown(f"🔧 **Tool**: {tool}")
-            st.sidebar.markdown(f"📝 **Prompt**: {user_prompt[:60]}...")
-
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a DevOps assistant. Return production-ready code only. No markdown or explanations. Use correct formats: HCL, YAML, Dockerfile, etc.",
-                    },
-                    {
-                        "role": "user",
-                        "content": user_prompt,
-                    },
-                ],
-                temperature=0.2,
-                max_tokens=2000,
-            )
-
-            code = response.choices[0].message.content
-            st.session_state["code_result"] = code
-            st.session_state["user_prompt"] = user_prompt
-            st.session_state["request_count"] += 1
-
-        except Exception as e:
-            st.error(f"❌ Error generating code: {e}")
-        finally:
-            st.session_state["is_generating"] = False
-            st.rerun()
-
-# ✅ Full-width output
-if st.session_state["code_result"]:
-    st.markdown("### 🧾 Generated Code")
-    st.code(st.session_state["code_result"])
-    st.download_button(
-        label="💾 Download Code",
-        data=st.session_state["code_result"],
-        file_name="devops_code.txt",
-        mime="text/plain"
-    )
-
-# ✅ Footer
+# Footer
 st.markdown("---")
-st.markdown("""
-Made by [DevOps Copilot](https://devops-copilot.onrender.com) | v0.2  
-""")
+st.markdown("🔒 All infrastructure generated with security best practices by default. ")

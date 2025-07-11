@@ -31,8 +31,8 @@ st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
 # ✅ Header
 st.markdown("# 🧠 DevOps Copilot")
 st.markdown("""
-### Generate production-grade DevOps code with AI  
-No boilerplate. No guesswork. Just structured HCL, YAML, and CI/CD pipelines — ready to deploy.
+### Generate DevOps Infrastructure and GenAI Apps with AI  
+No boilerplate. No guesswork. Just clean HCL, YAML, CI/CD pipelines — and LangChain-ready GenAI stacks.
 """)
 
 # ✅ Default prompts
@@ -47,6 +47,7 @@ default_prompts = {
     "AWS": "Generate AWS CLI commands to launch an EC2 instance and create an S3 bucket.",
     "GCP": "Write a GCP Deployment Manager config to deploy a Cloud Function with Pub/Sub trigger.",
     "Azure": "Write Azure CLI commands to provision an AKS cluster with autoscaling.",
+    "🧠 GenAI App Templates": "Create a Python-based LangChain chatbot with OpenAI, memory, and a Streamlit frontend.",
     "Other": ""
 }
 
@@ -82,7 +83,7 @@ if st.sidebar.button("♻️ Reset Session"):
 
 # ✅ Tool dropdown
 tool = st.selectbox(
-    "🔧 Select a DevOps tool or platform:",
+    "🔧 Select a DevOps or GenAI tool:",
     list(default_prompts.keys()),
     index=list(default_prompts.keys()).index(st.session_state["selected_tool"]),
     disabled=st.session_state["is_generating"]
@@ -143,7 +144,10 @@ if st.session_state["should_generate"]:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a DevOps assistant. Return production-ready code only. No markdown or explanations. Use correct formats: HCL, YAML, Dockerfile, etc.",
+                        "content": (
+                            "You are a DevOps and GenAI assistant. Return production-ready code only. "
+                            "Use correct formats: HCL, YAML, Dockerfile, Python, etc. No markdown or explanations."
+                        ),
                     },
                     {
                         "role": "user",
@@ -179,5 +183,5 @@ if st.session_state["code_result"]:
 # ✅ Footer
 st.markdown("---")
 st.markdown("""
-Made by [DevOps Copilot](https://devops-copilot.onrender.com) | v0.2  
+Made by [DevOps Copilot](https://devops-copilot.onrender.com) | v0.3  
 """)

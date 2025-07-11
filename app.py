@@ -5,12 +5,12 @@ import httpx
 from openai import OpenAI
 from datetime import datetime
 
-# ✅ Embed Plausible Analytics
+# ✅ Analytics
 components.html("""
 <script defer data-domain="devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
 """, height=0)
 
-# ✅ Get today's visitor count
+# ✅ Visitor Count
 def get_visitor_count():
     try:
         headers = {"Authorization": f"Bearer {os.environ['PLAUSIBLE_API_KEY']}"}
@@ -25,7 +25,7 @@ def get_visitor_count():
 # ✅ OpenAI client
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# ✅ Streamlit config
+# ✅ Page setup
 st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
 
 # ✅ Header
@@ -47,11 +47,11 @@ default_prompts = {
     "AWS": "Generate AWS CLI commands to launch an EC2 instance and create an S3 bucket.",
     "GCP": "Write a GCP Deployment Manager config to deploy a Cloud Function with Pub/Sub trigger.",
     "Azure": "Write Azure CLI commands to provision an AKS cluster with autoscaling.",
-    "🧠 GenAI App Templates": "Create a Python-based LangChain chatbot with OpenAI, memory, and a Streamlit frontend.",
+    "GenAI App Templates": "Create a Python-based LangChain chatbot with OpenAI, memory, and a Streamlit frontend.",
     "Other": ""
 }
 
-# ✅ Session state defaults
+# ✅ Session state setup
 if "user_prompt" not in st.session_state:
     st.session_state["user_prompt"] = ""
 if "code_result" not in st.session_state:
@@ -75,10 +75,14 @@ remaining = MAX_REQUESTS - st.session_state["request_count"]
 st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
 st.sidebar.caption("Limit resets on browser refresh or using reset button.")
 
+# ✅ Reset Button (works properly now)
 if st.sidebar.button("♻️ Reset Session"):
     st.session_state["user_prompt"] = default_prompts[st.session_state["selected_tool"]]
     st.session_state["code_result"] = ""
     st.session_state["request_count"] = 0
+    st.session_state["is_generating"] = False
+    st.session_state["should_generate"] = False
+    st.session_state["prompt_input"] = st.session_state["user_prompt"]
     st.rerun()
 
 # ✅ Tool dropdown
@@ -89,17 +93,19 @@ tool = st.selectbox(
     disabled=st.session_state["is_generating"]
 )
 
-# ✅ Update on tool change
 if tool != st.session_state["selected_tool"]:
     st.session_state["selected_tool"] = tool
     st.session_state["user_prompt"] = default_prompts[tool]
+    st.session_state["prompt_input"] = default_prompts[tool]
+    st.rerun()
 
-# ✅ Example prompt
+# ✅ Prompt example
 example = default_prompts.get(tool, "")
 with st.expander("📌 Example Prompt"):
     st.code(example)
     if st.button("Use this example prompt"):
         st.session_state["user_prompt"] = example
+        st.session_state["prompt_input"] = example
         st.rerun()
 
 # ✅ Limit check
@@ -107,16 +113,18 @@ if remaining <= 0:
     st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
     st.stop()
 
-# ✅ Prompt input
+# ✅ Prompt input (bind to key so it clears correctly)
 user_prompt = st.text_area(
     "📝 Describe what you want:",
-    value=st.session_state["user_prompt"],
-    height=200
+    value=st.session_state.get("prompt_input", st.session_state["user_prompt"]),
+    height=200,
+    key="prompt_input"
 )
 
 if st.button("🚀 Generate Code"):
     st.session_state["is_generating"] = True
     st.session_state["should_generate"] = True
+    st.session_state["user_prompt"] = user_prompt
     st.rerun()
 
 # ✅ Generate code
@@ -160,7 +168,6 @@ if st.session_state["should_generate"]:
 
             code = response.choices[0].message.content
             st.session_state["code_result"] = code
-            st.session_state["user_prompt"] = user_prompt
             st.session_state["request_count"] += 1
 
         except Exception as e:
@@ -169,7 +176,7 @@ if st.session_state["should_generate"]:
             st.session_state["is_generating"] = False
             st.rerun()
 
-# ✅ Full-width output
+# ✅ Display code output
 if st.session_state["code_result"]:
     st.markdown("### 🧾 Generated Code")
     st.code(st.session_state["code_result"])

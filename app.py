@@ -180,5 +180,4 @@ if st.session_state["code_result"]:
 st.markdown("---")
 st.markdown("""
 Made by [DevOps Copilot](https://devops-copilot.onrender.com) | v0.2  
-Built with ❤️ using OpenAI + Streamlit
 """)

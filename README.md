@@ -23,7 +23,7 @@ Just describe what you want, and DevOps Copilot returns ready-to-use code — no
 ## ✨ Demo (Live on Render)
 
 🖥️ Try it here (no sign-up):  
-**🔗 [https://your-render-url.com](https://your-render-url.com)**
+**🔗 https://devops-copilot.onrender.com/**
 
 ---
 

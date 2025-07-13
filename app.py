@@ -5,12 +5,37 @@ import httpx
 from openai import OpenAI
 from datetime import datetime
 
-# ✅ Analytics
+# ✅ Config
+st.set_page_config(page_title="Codeweave Copilot", page_icon="🧠", layout="wide")
+
+# ✅ Styles
+st.markdown("""
+<style>
+.big-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #2E8B57;
+    margin-bottom: 0;
+}
+.sub-title {
+    font-size: 1.1rem;
+    color: #444;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+.stTextArea textarea {
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ✅ Plausible analytics
 components.html("""
 <script defer data-domain="devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
 """, height=0)
 
-# ✅ Visitor Count
+# ✅ Analytics - Visitor Count
 def get_visitor_count():
     try:
         headers = {"Authorization": f"Bearer {os.environ['PLAUSIBLE_API_KEY']}"}
@@ -24,16 +49,6 @@ def get_visitor_count():
 
 # ✅ OpenAI client
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-# ✅ Page setup
-st.set_page_config(page_title="DevOps Copilot", page_icon="🧠")
-
-# ✅ Header
-st.markdown("# 🧠 DevOps Copilot")
-st.markdown("""
-### Generate DevOps Infrastructure and GenAI Apps with AI  
-No boilerplate. No guesswork. Just clean HCL, YAML, CI/CD pipelines — and LangChain-ready GenAI stacks.
-""")
 
 # ✅ Default prompts
 default_prompts = {
@@ -51,48 +66,44 @@ default_prompts = {
     "Other": ""
 }
 
-# ✅ Session state setup
-if "user_prompt" not in st.session_state:
-    st.session_state["user_prompt"] = ""
-if "code_result" not in st.session_state:
-    st.session_state["code_result"] = ""
-if "request_count" not in st.session_state:
-    st.session_state["request_count"] = 0
-if "is_generating" not in st.session_state:
-    st.session_state["is_generating"] = False
-if "should_generate" not in st.session_state:
-    st.session_state["should_generate"] = False
-if "selected_tool" not in st.session_state or st.session_state["selected_tool"] not in default_prompts:
-    st.session_state["selected_tool"] = "Terraform"
+# ✅ Session State Init
+for key, default in {
+    "user_prompt": "",
+    "code_result": "",
+    "request_count": 0,
+    "is_generating": False,
+    "should_generate": False,
+    "selected_tool": "Terraform"
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # ✅ Sidebar
 visitor_count = get_visitor_count()
-st.sidebar.markdown("## 📊 Session Stats")
-if visitor_count is not None:
-    st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
 MAX_REQUESTS = 5
 remaining = MAX_REQUESTS - st.session_state["request_count"]
-st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
-st.sidebar.caption("Limit resets on browser refresh or using reset button.")
 
-# ✅ Reset Button (works properly now)
+st.sidebar.title("📊 Session Stats")
+if visitor_count is not None:
+    st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
+st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
 if st.sidebar.button("♻️ Reset Session"):
-    st.session_state["user_prompt"] = default_prompts[st.session_state["selected_tool"]]
-    st.session_state["code_result"] = ""
-    st.session_state["request_count"] = 0
-    st.session_state["is_generating"] = False
-    st.session_state["should_generate"] = False
-    st.session_state["prompt_input"] = st.session_state["user_prompt"]
+    st.session_state.update({
+        "user_prompt": default_prompts[st.session_state["selected_tool"]],
+        "code_result": "",
+        "request_count": 0,
+        "is_generating": False,
+        "should_generate": False,
+        "prompt_input": default_prompts[st.session_state["selected_tool"]]
+    })
     st.rerun()
 
-# ✅ Tool dropdown
-tool = st.selectbox(
-    "🔧 Select a DevOps or GenAI tool:",
-    list(default_prompts.keys()),
-    index=list(default_prompts.keys()).index(st.session_state["selected_tool"]),
-    disabled=st.session_state["is_generating"]
-)
+# ✅ Header
+st.markdown('<div class="big-title">🚀 Codeweave Copilot</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">AI-powered DevOps & GenAI assistant. No boilerplate, just results.</div>', unsafe_allow_html=True)
 
+# ✅ Tool selector
+tool = st.selectbox("🔧 Select a DevOps or GenAI Tool", list(default_prompts.keys()), index=list(default_prompts.keys()).index(st.session_state["selected_tool"]), disabled=st.session_state["is_generating"])
 if tool != st.session_state["selected_tool"]:
     st.session_state["selected_tool"] = tool
     st.session_state["user_prompt"] = default_prompts[tool]
@@ -101,7 +112,7 @@ if tool != st.session_state["selected_tool"]:
 
 # ✅ Prompt example
 example = default_prompts.get(tool, "")
-with st.expander("📌 Example Prompt"):
+with st.expander("📌 Example Prompt", expanded=False):
     st.code(example)
     if st.button("Use this example prompt"):
         st.session_state["user_prompt"] = example
@@ -113,32 +124,20 @@ if remaining <= 0:
     st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
     st.stop()
 
-# ✅ Prompt input (bind to key so it clears correctly)
-user_prompt = st.text_area(
-    "📝 Describe what you want:",
-    value=st.session_state.get("prompt_input", st.session_state["user_prompt"]),
-    height=200,
-    key="prompt_input"
-)
+# ✅ Prompt input
+user_prompt = st.text_area("📝 Describe what you want:", value=st.session_state.get("prompt_input", st.session_state["user_prompt"]), height=200, key="prompt_input")
 
 if st.button("🚀 Generate Code"):
-    st.session_state["is_generating"] = True
-    st.session_state["should_generate"] = True
-    st.session_state["user_prompt"] = user_prompt
+    st.session_state.update({
+        "is_generating": True,
+        "should_generate": True,
+        "user_prompt": user_prompt
+    })
     st.rerun()
 
-# ✅ Generate code
+# ✅ Code generation
 if st.session_state["should_generate"]:
     st.session_state["should_generate"] = False
-
-    components.html("""
-    <script>
-      if (window.plausible) {
-        plausible('generate-code-clicked');
-      }
-    </script>
-    """, height=0)
-
     with st.spinner("🤖 Generating code using AI..."):
         try:
             timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -150,17 +149,8 @@ if st.session_state["should_generate"]:
             response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a DevOps and GenAI assistant. Return production-ready code only. "
-                            "Use correct formats: HCL, YAML, Dockerfile, Python, etc. No markdown or explanations."
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": user_prompt,
-                    },
+                    {"role": "system", "content": "You are a DevOps and GenAI assistant. Return production-ready code only. Use correct formats: HCL, YAML, Dockerfile, Python, etc. No markdown or explanations."},
+                    {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.2,
                 max_tokens=2000,
@@ -169,26 +159,18 @@ if st.session_state["should_generate"]:
             code = response.choices[0].message.content
             st.session_state["code_result"] = code
             st.session_state["request_count"] += 1
-
         except Exception as e:
             st.error(f"❌ Error generating code: {e}")
         finally:
             st.session_state["is_generating"] = False
             st.rerun()
 
-# ✅ Display code output
+# ✅ Output
 if st.session_state["code_result"]:
     st.markdown("### 🧾 Generated Code")
     st.code(st.session_state["code_result"])
-    st.download_button(
-        label="💾 Download Code",
-        data=st.session_state["code_result"],
-        file_name="devops_code.txt",
-        mime="text/plain"
-    )
+    st.download_button("💾 Download Code", data=st.session_state["code_result"], file_name="devops_code.txt", mime="text/plain")
 
 # ✅ Footer
 st.markdown("---")
-st.markdown("""
-Made by [DevOps Copilot](https://devops-copilot.onrender.com) | v0.3  
-""")
+st.caption("🚀 Built with ❤️ by Codeweave — v0.3 | [Visit Site](https://codeweave.co)")

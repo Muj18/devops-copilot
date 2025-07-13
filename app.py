@@ -5,37 +5,61 @@ import httpx
 from openai import OpenAI
 from datetime import datetime
 
-# ✅ Config
+# ✅ Page Config
 st.set_page_config(page_title="Codeweave Copilot", page_icon="🧠", layout="wide")
 
-# ✅ Custom styles
+# ✅ Custom CSS Styles
 st.markdown("""
 <style>
+body {
+    background-color: #F7F9FB;
+    font-family: 'Segoe UI', sans-serif;
+}
 .big-title {
-    font-size: 2.5rem;
+    font-size: 3rem;
     font-weight: 800;
-    color: #2E8B57;
+    color: #1f2937;
     margin-bottom: 0;
 }
 .sub-title {
     font-size: 1.1rem;
-    color: #444;
+    color: #4b5563;
     margin-top: 0;
-    margin-bottom: 1rem;
+    margin-bottom: 2rem;
 }
 .stTextArea textarea {
     font-family: monospace;
     font-size: 0.9rem;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    padding: 10px;
+    border-radius: 6px;
+}
+.stButton>button {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+.stDownloadButton>button {
+    background-color: #10b981;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: bold;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ✅ Plausible analytics
+# ✅ Analytics
 components.html("""
 <script defer data-domain="devops-copilot.onrender.com" src="https://plausible.io/js/script.js"></script>
 """, height=0)
 
-# ✅ Visitor count (from Plausible)
+# ✅ Visitor Count
 def get_visitor_count():
     try:
         headers = {"Authorization": f"Bearer {os.environ['PLAUSIBLE_API_KEY']}"}
@@ -47,10 +71,10 @@ def get_visitor_count():
         print(f"Visitor count error: {e}")
     return None
 
-# ✅ OpenAI client
+# ✅ OpenAI Client
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# ✅ Default prompt library
+# ✅ Default Prompts
 default_prompts = {
     "Terraform": "Generate Terraform to create an EKS cluster with 2 node groups and S3 backend.",
     "Docker": "Create a Dockerfile for a Python Flask app with gunicorn.",
@@ -66,7 +90,7 @@ default_prompts = {
     "Other": ""
 }
 
-# ✅ Initialize session state
+# ✅ Session State Setup
 for key, default in {
     "user_prompt": "",
     "code_result": "",
@@ -87,7 +111,6 @@ st.sidebar.title("📊 Session Stats")
 if visitor_count is not None:
     st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
 st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
-
 if st.sidebar.button("♻️ Reset Session"):
     st.session_state.update({
         "user_prompt": default_prompts[st.session_state["selected_tool"]],
@@ -101,9 +124,9 @@ if st.sidebar.button("♻️ Reset Session"):
 
 # ✅ Hero Section
 st.markdown('<div class="big-title">🧠 Codeweave Copilot</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Your AI-powered DevOps + GenAI assistant. Generate infra, pipelines, apps instantly.</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Your AI-powered DevOps + GenAI assistant. Generate infra, pipelines, and AI apps instantly.</div>', unsafe_allow_html=True)
 
-# ✅ Tool dropdown
+# ✅ Tool Select
 tool = st.selectbox("🔧 Choose a DevOps or GenAI Template:", list(default_prompts.keys()), index=list(default_prompts.keys()).index(st.session_state["selected_tool"]), disabled=st.session_state["is_generating"])
 if tool != st.session_state["selected_tool"]:
     st.session_state["selected_tool"] = tool
@@ -111,7 +134,7 @@ if tool != st.session_state["selected_tool"]:
     st.session_state["prompt_input"] = default_prompts[tool]
     st.rerun()
 
-# ✅ Example prompt
+# ✅ Example Prompt
 example = default_prompts.get(tool, "")
 with st.expander("📌 Example Prompt", expanded=False):
     st.code(example)
@@ -120,7 +143,7 @@ with st.expander("📌 Example Prompt", expanded=False):
         st.session_state["prompt_input"] = example
         st.rerun()
 
-# ✅ Limit enforcement
+# ✅ Daily Limit Check
 if remaining <= 0:
     st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
     st.stop()
@@ -128,7 +151,7 @@ if remaining <= 0:
 # ✅ Prompt Input
 user_prompt = st.text_area("📝 Describe what you want:", value=st.session_state.get("prompt_input", st.session_state["user_prompt"]), height=200, key="prompt_input")
 
-# ✅ Generate
+# ✅ Generate Code
 if st.button("🚀 Generate Code"):
     st.session_state.update({
         "is_generating": True,
@@ -137,7 +160,7 @@ if st.button("🚀 Generate Code"):
     })
     st.rerun()
 
-# ✅ OpenAI Generation
+# ✅ Run OpenAI
 if st.session_state["should_generate"]:
     st.session_state["should_generate"] = False
     with st.spinner("🤖 Generating code using OpenAI..."):

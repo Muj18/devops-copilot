@@ -21,7 +21,7 @@ st.markdown("""
     font-size: 1.1rem;
     color: #444;
     margin-top: 0;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 .stTextArea textarea {
     font-family: monospace;
@@ -38,7 +38,7 @@ components.html("""
 # ✅ Visitor count (from Plausible)
 def get_visitor_count():
     try:
-        headers = {"Authorization": f"Bearer {os.environ['PLAUSIBLE_API_KEY']}"}
+        headers = {"Authorization": f"Bearer " + os.environ['PLAUSIBLE_API_KEY']}
         params = {"site_id": "devops-copilot.onrender.com", "period": "day"}
         response = httpx.get("https://plausible.io/api/v1/stats/visitors", headers=headers, params=params, timeout=5)
         if response.status_code == 200:
@@ -50,7 +50,7 @@ def get_visitor_count():
 # ✅ OpenAI client
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# ✅ Default prompt library
+# ✅ Prompt templates
 default_prompts = {
     "Terraform": "Generate Terraform to create an EKS cluster with 2 node groups and S3 backend.",
     "Docker": "Create a Dockerfile for a Python Flask app with gunicorn.",
@@ -66,7 +66,7 @@ default_prompts = {
     "Other": ""
 }
 
-# ✅ Initialize session state
+# ✅ Session state
 for key, default in {
     "user_prompt": "",
     "code_result": "",
@@ -88,58 +88,79 @@ if visitor_count is not None:
     st.sidebar.markdown(f"👥 **Visitors Today:** {visitor_count}")
 st.sidebar.markdown(f"🔄 **Free Runs Left:** {remaining} / {MAX_REQUESTS}")
 
+# ✅ Feedback Link (Sidebar)
+st.sidebar.markdown("---")
+st.sidebar.markdown("🗣️ **Feedback**")
+st.sidebar.markdown(
+    "[Click here to share feedback](https://docs.google.com/forms/d/e/1FAIpQLScSlOGUp-uFMR-_420rLU2SBoASfP77blWUVPkYjTediSrQ2A/viewform?usp=header)",
+    unsafe_allow_html=True
+)
+
 if st.sidebar.button("♻️ Reset Session"):
     st.session_state.update({
         "user_prompt": default_prompts[st.session_state["selected_tool"]],
         "code_result": "",
         "request_count": 0,
         "is_generating": False,
-        "should_generate": False
+        "should_generate": False,
+        "prompt_input": default_prompts[st.session_state["selected_tool"]]
     })
     st.rerun()
 
 # ✅ Hero Section
 st.markdown('<div class="big-title">🧠 Codeweave Copilot</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Your AI-powered DevOps + GenAI assistant. Generate infra, pipelines, and smart apps instantly.</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Your AI-powered DevOps + GenAI assistant. Generate infra, pipelines, apps instantly.</div>', unsafe_allow_html=True)
 
 # ✅ Tool dropdown
-tool = st.selectbox("🔧 Choose a DevOps or GenAI Template:", list(default_prompts.keys()), index=list(default_prompts.keys()).index(st.session_state["selected_tool"]))
+tool = st.selectbox("🔧 Choose a DevOps or GenAI Template:", list(default_prompts.keys()), index=list(default_prompts.keys()).index(st.session_state["selected_tool"]), disabled=st.session_state["is_generating"])
 if tool != st.session_state["selected_tool"]:
     st.session_state["selected_tool"] = tool
     st.session_state["user_prompt"] = default_prompts[tool]
+    st.session_state["prompt_input"] = default_prompts[tool]
     st.rerun()
+
+# ✅ Example prompt
+example = default_prompts.get(tool, "")
+with st.expander("📌 Example Prompt", expanded=False):
+    st.code(example)
+    if st.button("Use this example prompt"):
+        st.session_state["user_prompt"] = example
+        st.session_state["prompt_input"] = example
+        st.rerun()
+
+# ✅ Usage limit
+if remaining <= 0:
+    st.error("⚠️ Daily free limit reached. Please come back tomorrow or reset.")
+    st.stop()
 
 # ✅ Prompt Input
-st.markdown("### 📝 Prompt")
-user_input = st.text_area("Describe what you want generated:", value=st.session_state["user_prompt"], height=200)
+user_prompt = st.text_area("📝 Describe what you want:", value=st.session_state.get("prompt_input", st.session_state["user_prompt"]), height=200, key="prompt_input")
 
-# ✅ Example
-with st.expander("💡 Need inspiration?"):
-    st.code(default_prompts[tool])
-
-# ✅ Generate
+# ✅ Generate Button
 if st.button("🚀 Generate Code"):
-    st.session_state["user_prompt"] = user_input
-    st.session_state["should_generate"] = True
-    st.session_state["is_generating"] = True
+    st.session_state.update({
+        "is_generating": True,
+        "should_generate": True,
+        "user_prompt": user_prompt
+    })
     st.rerun()
 
-# ✅ OpenAI
+# ✅ OpenAI Request
 if st.session_state["should_generate"]:
     st.session_state["should_generate"] = False
-    with st.spinner("🤖 Generating code..."):
+    with st.spinner("🤖 Generating code using OpenAI..."):
         try:
             timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
             st.sidebar.markdown("---")
             st.sidebar.markdown(f"🕒 **Last Used**: {timestamp}")
             st.sidebar.markdown(f"🔧 **Tool**: {tool}")
-            st.sidebar.markdown(f"📝 **Prompt**: {user_input[:60]}...")
+            st.sidebar.markdown(f"📝 **Prompt**: {user_prompt[:60]}...")
 
             response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are a DevOps and GenAI assistant. Return production-ready code only. Use correct formats: HCL, YAML, Dockerfile, Python, etc. No markdown or explanations."},
-                    {"role": "user", "content": user_input}
+                    {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.2,
                 max_tokens=2000,
@@ -154,12 +175,13 @@ if st.session_state["should_generate"]:
             st.session_state["is_generating"] = False
             st.rerun()
 
-# ✅ Output
+# ✅ Output Section
 if st.session_state["code_result"]:
-    st.markdown("### ✅ Your Generated Code")
+    st.markdown("### 🧾 Generated Code")
     st.code(st.session_state["code_result"])
-    st.download_button("💾 Download", data=st.session_state["code_result"], file_name="generated_code.txt", mime="text/plain")
+    st.download_button("💾 Download Code", data=st.session_state["code_result"], file_name="generated_code.txt", mime="text/plain")
 
-# ✅ Footer
+# ✅ Footer & Feedback
 st.markdown("---")
-st.caption("🚀 Built by Codeweave — [Visit site](https://codeweave.co)")
+st.markdown("💬 Have feedback or ideas? [Tell us here](https://docs.google.com/forms/d/e/1FAIpQLScSlOGUp-uFMR-_420rLU2SBoASfP77blWUVPkYjTediSrQ2A/viewform?usp=header)", unsafe_allow_html=True)
+st.caption("🚀 Built by Codeweave — v0.3 | [Visit Site](https://codeweave.co)")
